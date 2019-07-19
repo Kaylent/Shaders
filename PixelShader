@@ -1,0 +1,42 @@
+//структура для тестового примера. Используется для изменения источника освещения
+cbuffer ModelViewProjectionConstantBuffer
+{
+	matrix model; //вращает точку вокруг начала координат
+	matrix world; //не используется
+	matrix view; //не используется
+	matrix projection; //не используется
+};
+
+struct PixelShaderInput{
+	float4 pos : SV_POSITION;
+	float2 texCoord : TEXCOORD;
+};
+
+Texture2D NormalTexture : register (t0);
+Texture2D AmbientTexture : register (t1);
+SamplerState SampState;
+////////////////////////////////////////////////////////////////////////////////
+// Pixel Shader
+////////////////////////////////////////////////////////////////////////////////
+float4 main(PixelShaderInput input) : SV_TARGET
+{
+	//Задаем константы
+	float ambientStrength = 0.3f;
+	float diffStrength = 0.55f;
+	float3 color = float3(0.6f, 0.6f, 0.6f);
+	//получаем параметры из текстур
+	float3 normal = NormalTexture.SampleLevel(SampState, input.texCoord, 0);
+	float3 AmbientOcclusion = AmbientTexture.SampleLevel(SampState, input.texCoord, 0);
+	color = color * AmbientOcclusion;
+	//тестовое направление света.
+	float3 lightDir = float3(0.0f, 0.0f, -1.0f);
+	lightDir = normalize(mul(float4(lightDir, 0.0f), model).xyz); //вращение для теста
+	//значение ambient
+	float3 ambient = ambientStrength * color;
+	//значение diffusion
+	float diff = max(dot(normal, normalize(lightDir)), 0.0f) * color * diffStrength;
+	//Высчитываем итоговый цвет пикселя
+	color = ambient + diff;
+
+	return float4(color, 1.0f);
+}
