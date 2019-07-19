@@ -1,0 +1,54 @@
+cbuffer ModelViewProjectionConstantBuffer
+{
+	matrix model; //не используется
+	matrix world;
+	matrix view;
+	matrix projection;
+};
+
+struct ConstantOutputType
+{
+	float edges[3] : SV_TessFactor;
+	float inside : SV_InsideTessFactor;
+	float4 normal : NORMAL;
+};
+
+struct DomainInputType
+{
+	float3 position : POSITION;
+	float2 texCoord : TEXCOORD;
+};
+
+struct PixelShaderInput {
+	float4 position : SV_POSITION;
+	float2 texCoord : TEXCOORD;
+};
+
+Texture2D DisplacementTexture;
+SamplerState SampState;
+
+////////////////////////////////////////////////////////////////////////////////
+// Domain Shader
+////////////////////////////////////////////////////////////////////////////////
+[domain("tri")]
+
+PixelShaderInput main(ConstantOutputType input, float3 uvwCoord : SV_DomainLocation, const OutputPatch<DomainInputType, 3> patch)
+{
+	PixelShaderInput output;
+
+	//Высчитываем позицию новой вершины и ее кординаты на текстурах
+	float3 vertexPosition = uvwCoord.x * patch[0].position + uvwCoord.y * patch[1].position + uvwCoord.z * patch[2].position;
+	float2 vertexTexCoord = (uvwCoord.x * patch[0].texCoord + uvwCoord.y * patch[1].texCoord + uvwCoord.z * patch[2].texCoord) / 6;//texture scaling
+	//Получаем позицию вершины после displacement mapping
+	float3 disp = DisplacementTexture.SampleLevel(SampState, vertexTexCoord, 0);
+	vertexPosition += input.normal*disp*0.15f;
+	//Применяем матрицы преобразования(модельная не используется)
+	output.position = float4(vertexPosition, 1.0f);
+	output.position = mul(output.position, world);
+	output.position = mul(output.position, view);
+	output.position = mul(output.position, projection);
+
+	output.texCoord = vertexTexCoord;
+
+	return output;
+}
