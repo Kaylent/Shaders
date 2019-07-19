@@ -1,0 +1,66 @@
+cbuffer TessellationBuffer 
+{
+	float tessellationAmount;
+	float3 padding;
+};
+
+struct HullInputType
+{
+	float3 position : POSITION;
+	float2 texCoord: TEXCOORD;
+};
+
+struct ConstantOutputType
+{
+	float edges[3] : SV_TessFactor;
+	float inside : SV_InsideTessFactor;
+	float4 normal : NORMAL;
+};
+
+struct DomainInputType
+{
+	float3 position : POSITION;
+	float2 texCoord : TEXCOORD;
+};
+
+ConstantOutputType ColorPatchConstantFunction(InputPatch<HullInputType, 3> inputPatch, uint patchId : SV_PrimitiveID)
+{
+	ConstantOutputType output;
+	
+	//Устанавливаем фактор тесселляции для трех его граней
+	output.edges[0] = tessellationAmount;
+	output.edges[1] = tessellationAmount;
+	output.edges[2] = tessellationAmount;
+	//Рассчитываем нормаль полигона(плоскости)
+	float3 v1 = inputPatch[1].position - inputPatch[0].position;
+	float3 v2 = inputPatch[2].position - inputPatch[1].position;
+	float3 v3 = inputPatch[0].position - inputPatch[2].position;
+	output.normal.x = v2.y*v1.z - v2.z*v1.y;
+	output.normal.y = v2.z*v1.x - v2.x*v1.z;
+	output.normal.z = v2.x*v1.y - v2.y*v1.x;
+	output.normal.w = 0.0f;
+	output.normal = normalize(output.normal);
+	//Устанавливаем фактор тесселляции внутри треугольника
+	output.inside = tessellationAmount;
+
+	return output;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Hull Shader
+////////////////////////////////////////////////////////////////////////////////
+[domain("tri")]
+[partitioning("fractional_odd")]
+[outputtopology("triangle_cw")]
+[outputcontrolpoints(3)]
+[patchconstantfunc("ColorPatchConstantFunction")]
+[maxtessfactor(64.0)]
+DomainInputType main(InputPatch<HullInputType, 3> patch, uint pointId : SV_OutputControlPointID, uint patchId : SV_PrimitiveID)
+{
+	DomainInputType output;
+
+	output.position = patch[pointId].position;
+	output.texCoord = patch[pointId].texCoord;
+
+	return output;
+}
