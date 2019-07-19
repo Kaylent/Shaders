@@ -1,0 +1,22 @@
+//просто передает данные в hull shader
+struct VertexShaderInput
+{
+	float3 position : POSITION;
+	float2 texCoord: TEXCOORD;
+};
+struct HullShaderInput
+{
+	float3 position : POSITION;
+	float2 texCoord: TEXCOORD;
+};
+
+HullShaderInput main(VertexShaderInput input)
+{
+	HullShaderInput output;
+	
+	output.position = input.position;
+	output.texCoord = input.texCoord;
+
+	return output;
+}
+
